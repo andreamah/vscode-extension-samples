@@ -38,7 +38,7 @@ export class CustomBuildTaskProvider implements vscode.TaskProvider {
 		const flavor: string = _task.definition.flavor;
 		if (flavor) {
 			const definition: CustomBuildTaskDefinition = <any>_task.definition;
-			return this.getTask(definition.flavor, definition.flags ? definition.flags : [], definition);
+			return this.getTask(definition.flavor, definition.flags ? definition.flags : [], undefined, definition);
 		}
 		return undefined;
 	}
@@ -53,15 +53,18 @@ export class CustomBuildTaskProvider implements vscode.TaskProvider {
 		const flags: string[][] = [['watch', 'incremental'], ['incremental'], []];
 
 		this.tasks = [];
-		flavors.forEach(flavor => {
-			flags.forEach(flagGroup => {
-				this.tasks!.push(this.getTask(flavor, flagGroup));
+
+		vscode.workspace.workspaceFolders?.forEach(workspace => {
+			flavors.forEach(flavor => {
+				flags.forEach(flagGroup => {
+					this.tasks!.push(this.getTask(flavor, flagGroup,workspace));
+				});
 			});
 		});
 		return this.tasks;
 	}
 
-	private getTask(flavor: string, flags: string[], definition?: CustomBuildTaskDefinition): vscode.Task {
+	private getTask(flavor: string, flags: string[], workspace?: vscode.WorkspaceFolder, definition?: CustomBuildTaskDefinition): vscode.Task {
 		if (definition === undefined) {
 			definition = {
 				type: CustomBuildTaskProvider.CustomBuildScriptType,
@@ -71,6 +74,7 @@ export class CustomBuildTaskProvider implements vscode.TaskProvider {
 		}
 		return new vscode.Task(definition, vscode.TaskScope.Workspace, `${flavor} ${flags.join(' ')}`,
 			CustomBuildTaskProvider.CustomBuildScriptType, new vscode.CustomExecution(async (): Promise<vscode.Pseudoterminal> => {
+				console.log(workspace);
 				// When the task is executed, this callback will run. Here, we setup for running the task.
 				return new CustomBuildTaskTerminal(this.workspaceRoot, flavor, flags, () => this.sharedState, (state: string) => this.sharedState = state);
 			}));
